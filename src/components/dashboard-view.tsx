@@ -1,10 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { FollowCard } from "@/components/follow-card";
 import { Spinner } from "@/components/icons";
 import type { PoolMember } from "@/app/api/pool/route";
+import { ALL_POOL_TYPES, POOL_TYPES, type PoolType } from "@/lib/pool-types";
 
 type PoolResponse = {
   following: PoolMember[];
@@ -55,6 +57,8 @@ export function DashboardView() {
     queryFn: fetchPool,
   });
 
+  const [filter, setFilter] = useState<PoolType | "ALL">("ALL");
+
   function recordFollow(m: PoolMember) {
     fetch("/api/follow", {
       method: "POST",
@@ -95,7 +99,16 @@ export function DashboardView() {
     );
   }
 
-  const { following = [], toFollow = [], total = 0 } = data ?? {};
+  const { following: allFollowing = [], toFollow: allToFollow = [], total = 0 } =
+    data ?? {};
+
+  // Which types actually appear in the pool (for showing only relevant tabs).
+  const presentTypes = ALL_POOL_TYPES.filter((t) =>
+    [...allFollowing, ...allToFollow].some((m) => m.type === t)
+  );
+  const byFilter = (m: PoolMember) => filter === "ALL" || m.type === filter;
+  const following = allFollowing.filter(byFilter);
+  const toFollow = allToFollow.filter(byFilter);
 
   if (total === 0) {
     return (
@@ -110,20 +123,34 @@ export function DashboardView() {
 
   return (
     <div className="space-y-10">
-      {/* Progress hero */}
+      {/* Progress hero — overall, across all types */}
       <div className="flex items-center gap-6 rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-6">
-        <ProgressRing value={following.length} total={total} />
+        <ProgressRing value={allFollowing.length} total={total} />
         <div>
           <h2 className="text-xl font-bold tracking-tight">
-            You follow {following.length} of {total} colleagues
+            You follow {allFollowing.length} of {total} in the network
           </h2>
           <p className="mt-1 text-sm text-[var(--muted)]">
-            {toFollow.length > 0
-              ? `${toFollow.length} more to go — one click each to boost each other's reach.`
+            {allToFollow.length > 0
+              ? `${allToFollow.length} more to go — one click each to boost each other's reach.`
               : "You're connected with everyone in the pool. 🎉"}
           </p>
         </div>
       </div>
+
+      {/* Type filter tabs */}
+      {presentTypes.length > 1 && (
+        <div className="flex flex-wrap gap-2">
+          <FilterTab active={filter === "ALL"} onClick={() => setFilter("ALL")}>
+            All
+          </FilterTab>
+          {presentTypes.map((t) => (
+            <FilterTab key={t} active={filter === t} onClick={() => setFilter(t)}>
+              {POOL_TYPES[t].label}
+            </FilterTab>
+          ))}
+        </div>
+      )}
 
       {toFollow.length > 0 && (
         <section>
@@ -147,6 +174,29 @@ export function DashboardView() {
         </section>
       )}
     </div>
+  );
+}
+
+function FilterTab({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`rounded-full border px-4 py-1.5 text-sm font-medium transition ${
+        active
+          ? "border-[var(--brand)] bg-[var(--brand)]/10 text-[var(--brand)]"
+          : "border-[var(--border)] text-[var(--muted)] hover:text-[var(--foreground)]"
+      }`}
+    >
+      {children}
+    </button>
   );
 }
 

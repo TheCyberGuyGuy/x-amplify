@@ -4,6 +4,13 @@ import Image from "next/image";
 import { motion } from "framer-motion";
 import { CheckBadge } from "@/components/icons";
 import type { PoolMember } from "@/app/api/pool/route";
+import { poolTypeLabel } from "@/lib/pool-types";
+
+const TYPE_STYLES: Record<string, string> = {
+  ETORIAN: "border-[var(--brand)]/30 bg-[var(--brand)]/10 text-[var(--brand)]",
+  POPULAR_INVESTOR: "border-amber-400/30 bg-amber-400/10 text-amber-300",
+  ETORO_HANDLE: "border-sky-400/30 bg-sky-400/10 text-sky-300",
+};
 
 export function FollowCard({
   member,
@@ -44,8 +51,19 @@ export function FollowCard({
             </span>
           )}
         </div>
-        <div className="truncate text-sm text-[var(--muted)]">
-          @{member.username}
+        <div className="flex items-center gap-2">
+          <span className="truncate text-sm text-[var(--muted)]">
+            @{member.username}
+          </span>
+          {member.type && (
+            <span
+              className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
+                TYPE_STYLES[member.type] ?? "border-[var(--border)] text-[var(--muted)]"
+              }`}
+            >
+              {poolTypeLabel(member.type)}
+            </span>
+          )}
         </div>
         {member.description && (
           <p className="mt-0.5 line-clamp-1 text-xs text-[var(--muted)]/80">

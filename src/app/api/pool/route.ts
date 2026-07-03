@@ -9,6 +9,7 @@ import {
   isEtoroAffiliated,
   XApiError,
 } from "@/lib/x-api";
+import { isPoolType } from "@/lib/pool-types";
 
 export type PoolMember = {
   id: string;
@@ -18,6 +19,7 @@ export type PoolMember = {
   description: string | null;
   isEtoroVerified: boolean;
   following: boolean;
+  type: string | null;
 };
 
 // GET /api/pool — the logged-in user's follow status across the active pool.
@@ -58,6 +60,7 @@ export async function GET() {
         description: x?.description ?? h.description,
         isEtoroVerified: x ? isEtoroAffiliated(x) : h.isEtoroVerified,
         following: x ? isFollowing(x) : false,
+        type: h.type,
       };
     });
 
@@ -82,11 +85,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const body = (await req.json().catch(() => ({}))) as { username?: string };
+  const body = (await req.json().catch(() => ({}))) as {
+    username?: string;
+    type?: string;
+  };
   const username = body.username?.trim().replace(/^@/, "").toLowerCase();
   if (!username || !/^[a-z0-9_]{1,15}$/.test(username)) {
     return NextResponse.json({ error: "Invalid X handle." }, { status: 400 });
   }
+  // Admins may assign any of the three types (incl. ETORO_HANDLE).
+  const type = isPoolType(body.type) ? body.type : "ETORIAN";
 
   const existing = await prisma.poolHandle.findUnique({ where: { username } });
   if (existing) {
@@ -107,6 +115,7 @@ export async function POST(req: Request) {
         profileImage: x.profile_image_url ?? null,
         description: x.description ?? null,
         isEtoroVerified: isEtoroAffiliated(x),
+        type,
         addedById: session.user.id,
       },
     });

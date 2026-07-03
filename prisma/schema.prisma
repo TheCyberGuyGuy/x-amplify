@@ -67,6 +67,8 @@ model PoolHandle {
   id              String   @id @default(cuid())
   username        String   @unique // lowercase, no @
   xUserId         String?
+  // ETORIAN | POPULAR_INVESTOR | ETORO_HANDLE. null = self-registered, pending onboarding choice.
+  type            String?
   displayName     String?
   profileImage    String?
   description     String?

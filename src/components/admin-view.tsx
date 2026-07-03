@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import { CheckBadge, Spinner } from "@/components/icons";
+import { ALL_POOL_TYPES, POOL_TYPES, poolTypeLabel, type PoolType } from "@/lib/pool-types";
 
 type Handle = {
   id: string;
@@ -11,12 +12,14 @@ type Handle = {
   profileImage: string | null;
   isEtoroVerified: boolean;
   active: boolean;
+  type: string | null;
 };
 
 export function AdminView() {
   const [handles, setHandles] = useState<Handle[]>([]);
   const [loading, setLoading] = useState(true);
   const [input, setInput] = useState("");
+  const [type, setType] = useState<PoolType>("ETORIAN");
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -38,7 +41,7 @@ export function AdminView() {
     const res = await fetch("/api/pool", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username: input }),
+      body: JSON.stringify({ username: input, type }),
     });
     const data = await res.json().catch(() => ({}));
     setAdding(false);
@@ -85,6 +88,17 @@ export function AdminView() {
             className="w-full bg-transparent px-2 py-3 outline-none placeholder:text-[var(--muted)]/60"
           />
         </div>
+        <select
+          value={type}
+          onChange={(e) => setType(e.target.value as PoolType)}
+          className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-4 py-3 outline-none focus:border-[var(--brand)]/50"
+        >
+          {ALL_POOL_TYPES.map((t) => (
+            <option key={t} value={t}>
+              {POOL_TYPES[t].label}
+            </option>
+          ))}
+        </select>
         <button
           type="submit"
           disabled={adding || !input.trim()}
@@ -130,8 +144,13 @@ export function AdminView() {
                     </span>
                   )}
                 </div>
-                <div className="truncate text-sm text-[var(--muted)]">
-                  @{h.username}
+                <div className="flex items-center gap-2">
+                  <span className="truncate text-sm text-[var(--muted)]">
+                    @{h.username}
+                  </span>
+                  <span className="shrink-0 rounded-full border border-[var(--border)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">
+                    {poolTypeLabel(h.type)}
+                  </span>
                 </div>
               </div>
               <button
