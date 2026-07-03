@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { signIn } from "next-auth/react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { FollowCard } from "@/components/follow-card";
@@ -86,15 +87,26 @@ export function DashboardView() {
   }
 
   if (error) {
+    const msg = (error as Error).message;
+    const sessionExpired = /sign in|session/i.test(msg);
     return (
       <div className="mx-auto max-w-md rounded-2xl border border-red-500/30 bg-red-500/10 p-6 text-center">
-        <p className="font-medium text-red-300">{(error as Error).message}</p>
-        <button
-          onClick={() => qc.invalidateQueries({ queryKey: ["pool"] })}
-          className="mt-4 rounded-full border border-[var(--border)] px-4 py-2 text-sm hover:bg-[var(--surface-2)]"
-        >
-          Try again
-        </button>
+        <p className="font-medium text-red-300">{msg}</p>
+        {sessionExpired ? (
+          <button
+            onClick={() => signIn("twitter", { callbackUrl: "/dashboard" })}
+            className="mt-4 rounded-full bg-white px-5 py-2 text-sm font-semibold text-black hover:bg-white/90"
+          >
+            Sign in with X again
+          </button>
+        ) : (
+          <button
+            onClick={() => qc.invalidateQueries({ queryKey: ["pool"] })}
+            className="mt-4 rounded-full border border-[var(--border)] px-4 py-2 text-sm hover:bg-[var(--surface-2)]"
+          >
+            Try again
+          </button>
+        )}
       </div>
     );
   }

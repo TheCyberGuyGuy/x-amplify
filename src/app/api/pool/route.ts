@@ -43,11 +43,19 @@ export async function GET() {
   }
 
   try {
-    const token = await getAccessTokenForUser(session.user.id);
-    const xUsers = await lookupUsersByUsernames(
-      targets.map((h) => h.username),
-      token
-    );
+    let token = await getAccessTokenForUser(session.user.id);
+    let xUsers;
+    try {
+      xUsers = await lookupUsersByUsernames(targets.map((h) => h.username), token);
+    } catch (e) {
+      // Token rejected mid-flight → force a refresh and retry once.
+      if ((e as XApiError).status === 401) {
+        token = await getAccessTokenForUser(session.user.id, true);
+        xUsers = await lookupUsersByUsernames(targets.map((h) => h.username), token);
+      } else {
+        throw e;
+      }
+    }
     const byName = new Map(xUsers.map((u) => [u.username.toLowerCase(), u]));
 
     const members: PoolMember[] = targets.map((h) => {

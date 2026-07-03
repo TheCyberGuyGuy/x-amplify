@@ -30,8 +30,14 @@ export class XApiError extends Error {
   }
 }
 
-/** Returns a valid access token for a user, refreshing it if expired. */
-export async function getAccessTokenForUser(userId: string): Promise<string> {
+/**
+ * Returns a valid access token for a user, refreshing it if expired.
+ * Pass force=true to refresh regardless (used to recover from a 401).
+ */
+export async function getAccessTokenForUser(
+  userId: string,
+  force = false
+): Promise<string> {
   const account = await prisma.account.findFirst({
     where: { userId, provider: "twitter" },
   });
@@ -41,11 +47,14 @@ export async function getAccessTokenForUser(userId: string): Promise<string> {
 
   const now = Math.floor(Date.now() / 1000);
   const expiresAt = account.expires_at ?? 0;
-  // Refresh a minute before actual expiry.
-  if (expiresAt && expiresAt - 60 > now) {
+  // Refresh a minute before actual expiry (unless forced).
+  if (!force && expiresAt && expiresAt - 60 > now) {
     return account.access_token;
   }
   if (!account.refresh_token) {
+    if (force) {
+      throw new XApiError(401, "Session expired. Please sign in with X again.");
+    }
     // No refresh token but token may still be valid; try it.
     return account.access_token;
   }
