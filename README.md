@@ -1,36 +1,79 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# eToro X-Amplify
 
-## Getting Started
+An internal portal that helps eToro employees connect with each other on X (Twitter).
+Sign in with X → see which colleagues you already follow → follow the rest in one click.
 
-First, run the development server:
+## How it works (the important bit)
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+X's "list who a user follows" endpoint is Enterprise-only (~$42k/mo) in 2026, so we
+**don't** read a user's follow graph. Instead:
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+- An **admin curates a pool** of eToro X handles.
+- When an employee signs in, we look up that pool with the **`connection_status`**
+  field (`GET /2/users/by`, user-context OAuth). X tells us, per handle, whether the
+  employee already follows them.
+- "Follow" buttons are **X intent links** (`x.com/intent/follow?screen_name=…`) —
+  user-initiated, zero API cost, no platform-manipulation risk.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Stack
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Next.js 16 (App Router) · TypeScript · Tailwind v4 · Auth.js v5 (X OAuth 2.0 PKCE) ·
+Prisma + SQLite (local) / Postgres (prod) · TanStack Query · Framer Motion.
 
-## Learn More
+## Local setup
 
-To learn more about Next.js, take a look at the following resources:
+1. **Install**
+   ```bash
+   npm install
+   ```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+2. **Create an X app** (you already have a developer account):
+   - OAuth 2.0, type **Web App / Confidential client**.
+   - Callback URL: `http://localhost:3000/api/auth/callback/twitter`
+   - Scopes: `users.read tweet.read offline.access`
+   - Copy the **Client ID** and **Client Secret**.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+3. **Configure `.env.local`** (already scaffolded — fill the blanks):
+   ```env
+   AUTH_TWITTER_ID=your_client_id
+   AUTH_TWITTER_SECRET=your_client_secret
+   AUTH_SECRET=run `npx auth secret` to generate
+   AUTH_URL=http://localhost:3000
+   DATABASE_URL="file:./dev.db"
+   ADMIN_USERNAMES=your_x_handle   # comma-separated, become ADMIN on first login
+   ```
 
-## Deploy on Vercel
+4. **Init the database**
+   ```bash
+   npx prisma migrate dev
+   npm run db:seed   # optional: pre-populate the pilot handle pool
+   ```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+5. **Run**
+   ```bash
+   npm run dev
+   ```
+   Open http://localhost:3000, sign in with X. If your handle is in
+   `ADMIN_USERNAMES`, you'll see the **Admin** link to manage the pool.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Admin
+
+`/admin` (role-gated): add an X handle → it's resolved + verified against X (profile,
+eToro affiliation badge) → appears in the pool. Toggle active / remove.
+
+## Deploy to Vercel
+
+1. Push to GitHub, import into Vercel.
+2. Add a **Postgres** database (Vercel Storage) — set `DATABASE_URL`.
+3. Change `prisma/schema.prisma` datasource `provider` to `postgresql`, run
+   `prisma migrate deploy` (the `build` script runs `prisma generate`).
+4. Set env vars: `AUTH_TWITTER_ID`, `AUTH_TWITTER_SECRET`, `AUTH_SECRET`,
+   `AUTH_URL=https://your-app.vercel.app`, `ADMIN_USERNAMES`.
+5. Add the production callback URL to your X app:
+   `https://your-app.vercel.app/api/auth/callback/twitter`.
+
+## Roadmap
+
+- **Phase 0 (done):** login, follow-status dashboard, admin pool, intent-link follows.
+- **Phase 1:** guided "follow the rest" flow + pilot metrics (FollowEvent already tracked).
+- **Phase 2:** organic posts feed from pool members with like/comment deep-links.
