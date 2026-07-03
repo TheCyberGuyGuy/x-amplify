@@ -81,7 +81,12 @@ export function FollowCard({
           href={intentUrl}
           target="_blank"
           rel="noopener noreferrer"
-          onClick={() => onFollow?.(member)}
+          onClick={(e) => {
+            // Force a new tab so the portal is never navigated away from.
+            e.preventDefault();
+            window.open(intentUrl, "_blank", "noopener,noreferrer");
+            onFollow?.(member);
+          }}
           className="shrink-0 rounded-full bg-white px-5 py-2 text-sm font-semibold text-black transition hover:bg-white/90 active:scale-95"
         >
           Follow
