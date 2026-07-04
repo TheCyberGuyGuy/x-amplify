@@ -10,6 +10,7 @@ import {
   XApiError,
 } from "@/lib/x-api";
 import { isPoolType } from "@/lib/pool-types";
+import { isAdmin } from "@/lib/roles";
 
 export type PoolMember = {
   id: string;
@@ -89,7 +90,7 @@ export async function GET() {
 // POST /api/pool — admin adds a handle (resolves + verifies via X).
 export async function POST(req: Request) {
   const session = await auth();
-  if (session?.user?.role !== "ADMIN") {
+  if (!session?.user || !isAdmin(session.user.role)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

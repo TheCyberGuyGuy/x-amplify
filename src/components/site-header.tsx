@@ -28,7 +28,7 @@ export function SiteHeader({
         </Link>
 
         <div className="flex items-center gap-3">
-          {role === "ADMIN" && (
+          {(role === "ADMIN" || role === "SUPER_ADMIN") && (
             <Link
               href="/admin"
               className="rounded-full border border-[var(--border)] px-3 py-1.5 text-xs font-medium text-[var(--muted)] transition hover:text-[var(--foreground)]"

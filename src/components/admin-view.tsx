@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import { CheckBadge, Spinner } from "@/components/icons";
-import { ALL_POOL_TYPES, POOL_TYPES, poolTypeLabel, type PoolType } from "@/lib/pool-types";
+import { ALL_POOL_TYPES, POOL_TYPES, type PoolType } from "@/lib/pool-types";
 
 type Handle = {
   id: string;
@@ -13,9 +13,16 @@ type Handle = {
   isEtoroVerified: boolean;
   active: boolean;
   type: string | null;
+  userRole: string | null; // role of the linked User, if they've logged in
 };
 
-export function AdminView() {
+export function AdminView({
+  isSuperAdmin,
+  currentUsername,
+}: {
+  isSuperAdmin: boolean;
+  currentUsername: string | null;
+}) {
   const [handles, setHandles] = useState<Handle[]>([]);
   const [loading, setLoading] = useState(true);
   const [input, setInput] = useState("");
@@ -58,14 +65,43 @@ export function AdminView() {
     setHandles((h) => h.filter((x) => x.id !== id));
   }
 
-  async function toggle(h: Handle) {
-    await fetch(`/api/pool/${h.id}`, {
+  async function patch(id: string, body: Record<string, unknown>) {
+    await fetch(`/api/pool/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ active: !h.active }),
+      body: JSON.stringify(body),
     });
+  }
+
+  function toggleActive(h: Handle) {
+    patch(h.id, { active: !h.active });
     setHandles((list) =>
       list.map((x) => (x.id === h.id ? { ...x, active: !x.active } : x))
+    );
+  }
+
+  function changeType(h: Handle, newType: PoolType) {
+    patch(h.id, { type: newType });
+    setHandles((list) =>
+      list.map((x) => (x.id === h.id ? { ...x, type: newType } : x))
+    );
+  }
+
+  async function toggleAdmin(h: Handle) {
+    const makeAdmin = h.userRole !== "ADMIN";
+    setError(null);
+    const res = await fetch("/api/admin/role", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username: h.username, makeAdmin }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setError(data.error ?? "Failed to update role.");
+      return;
+    }
+    setHandles((list) =>
+      list.map((x) => (x.id === h.id ? { ...x, userRole: data.role } : x))
     );
   }
 
@@ -74,7 +110,8 @@ export function AdminView() {
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Handle pool</h1>
         <p className="mt-1 text-sm text-[var(--muted)]">
-          Add the eToro X accounts colleagues should connect with.
+          Add and manage the X accounts colleagues connect with.
+          {isSuperAdmin && " As super admin, you can also promote admins."}
         </p>
       </div>
 
@@ -120,59 +157,106 @@ export function AdminView() {
         </p>
       ) : (
         <ul className="divide-y divide-[var(--border)] overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)]">
-          {handles.map((h) => (
-            <li key={h.id} className="flex items-center gap-3 p-3.5">
-              {h.profileImage ? (
-                <Image
-                  src={h.profileImage.replace("_normal", "_bigger")}
-                  alt=""
-                  width={40}
-                  height={40}
-                  className="h-10 w-10 rounded-full ring-1 ring-[var(--border)]"
-                />
-              ) : (
-                <div className="h-10 w-10 rounded-full bg-[var(--surface-2)]" />
-              )}
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1.5">
-                  <span className="truncate font-medium">
-                    {h.displayName ?? h.username}
-                  </span>
-                  {h.isEtoroVerified && (
-                    <span title="eToro affiliated" className="text-[var(--brand)]">
-                      <CheckBadge className="h-3.5 w-3.5" />
+          {handles.map((h) => {
+            const isSelf = h.username.toLowerCase() === currentUsername?.toLowerCase();
+            const isTargetSuperAdmin = h.userRole === "SUPER_ADMIN";
+            const canToggleAdmin =
+              isSuperAdmin && h.userRole !== null && !isSelf && !isTargetSuperAdmin;
+            return (
+              <li key={h.id} className="flex flex-wrap items-center gap-3 p-3.5">
+                {h.profileImage ? (
+                  <Image
+                    src={h.profileImage.replace("_normal", "_bigger")}
+                    alt=""
+                    width={40}
+                    height={40}
+                    className="h-10 w-10 rounded-full ring-1 ring-[var(--border)]"
+                  />
+                ) : (
+                  <div className="h-10 w-10 rounded-full bg-[var(--surface-2)]" />
+                )}
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5">
+                    <span className="truncate font-medium">
+                      {h.displayName ?? h.username}
                     </span>
-                  )}
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="truncate text-sm text-[var(--muted)]">
+                    {h.isEtoroVerified && (
+                      <span title="eToro affiliated" className="text-[var(--brand)]">
+                        <CheckBadge className="h-3.5 w-3.5" />
+                      </span>
+                    )}
+                    {isTargetSuperAdmin && (
+                      <RolePill label="Super Admin" tone="brand" />
+                    )}
+                    {h.userRole === "ADMIN" && <RolePill label="Admin" tone="sky" />}
+                  </div>
+                  <div className="truncate text-sm text-[var(--muted)]">
                     @{h.username}
-                  </span>
-                  <span className="shrink-0 rounded-full border border-[var(--border)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">
-                    {poolTypeLabel(h.type)}
-                  </span>
+                  </div>
                 </div>
-              </div>
-              <button
-                onClick={() => toggle(h)}
-                className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
-                  h.active
-                    ? "border-[var(--brand)]/30 text-[var(--brand)]"
-                    : "border-[var(--border)] text-[var(--muted)]"
-                }`}
-              >
-                {h.active ? "Active" : "Hidden"}
-              </button>
-              <button
-                onClick={() => remove(h.id)}
-                className="rounded-full border border-[var(--border)] px-3 py-1.5 text-xs font-medium text-[var(--muted)] transition hover:border-red-500/40 hover:text-red-400"
-              >
-                Remove
-              </button>
-            </li>
-          ))}
+
+                {/* Type editor (admin + super admin) */}
+                <select
+                  value={h.type ?? ""}
+                  onChange={(e) => changeType(h, e.target.value as PoolType)}
+                  className="rounded-full border border-[var(--border)] bg-[var(--background)] px-3 py-1.5 text-xs outline-none focus:border-[var(--brand)]/50"
+                >
+                  {!h.type && <option value="">Unassigned</option>}
+                  {ALL_POOL_TYPES.map((t) => (
+                    <option key={t} value={t}>
+                      {POOL_TYPES[t].label}
+                    </option>
+                  ))}
+                </select>
+
+                {canToggleAdmin && (
+                  <button
+                    onClick={() => toggleAdmin(h)}
+                    className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
+                      h.userRole === "ADMIN"
+                        ? "border-sky-400/40 text-sky-300 hover:border-red-500/40 hover:text-red-400"
+                        : "border-[var(--border)] text-[var(--muted)] hover:border-sky-400/40 hover:text-sky-300"
+                    }`}
+                  >
+                    {h.userRole === "ADMIN" ? "Remove admin" : "Make admin"}
+                  </button>
+                )}
+
+                <button
+                  onClick={() => toggleActive(h)}
+                  className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
+                    h.active
+                      ? "border-[var(--brand)]/30 text-[var(--brand)]"
+                      : "border-[var(--border)] text-[var(--muted)]"
+                  }`}
+                >
+                  {h.active ? "Active" : "Hidden"}
+                </button>
+                <button
+                  onClick={() => remove(h.id)}
+                  className="rounded-full border border-[var(--border)] px-3 py-1.5 text-xs font-medium text-[var(--muted)] transition hover:border-red-500/40 hover:text-red-400"
+                >
+                  Remove
+                </button>
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>
+  );
+}
+
+function RolePill({ label, tone }: { label: string; tone: "brand" | "sky" }) {
+  const styles =
+    tone === "brand"
+      ? "border-[var(--brand)]/30 bg-[var(--brand)]/10 text-[var(--brand)]"
+      : "border-sky-400/30 bg-sky-400/10 text-sky-300";
+  return (
+    <span
+      className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${styles}`}
+    >
+      {label}
+    </span>
   );
 }

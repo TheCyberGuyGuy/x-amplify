@@ -2,12 +2,22 @@ import NextAuth from "next-auth";
 import Twitter from "next-auth/providers/twitter";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
+import { highestRole } from "@/lib/roles";
 
-function adminUsernames(): string[] {
-  return (process.env.ADMIN_USERNAMES ?? "")
+function parseUsernames(raw: string | undefined): string[] {
+  return (raw ?? "")
     .split(",")
     .map((u) => u.trim().replace(/^@/, "").toLowerCase())
     .filter(Boolean);
+}
+
+// Role bootstrapped from env: SUPER_ADMIN wins over ADMIN.
+function envRoleFor(username: string | null): "SUPER_ADMIN" | "ADMIN" | "EMPLOYEE" {
+  if (!username) return "EMPLOYEE";
+  const u = username.toLowerCase();
+  if (parseUsernames(process.env.SUPER_ADMIN_USERNAMES).includes(u)) return "SUPER_ADMIN";
+  if (parseUsernames(process.env.ADMIN_USERNAMES).includes(u)) return "ADMIN";
+  return "EMPLOYEE";
 }
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
@@ -33,11 +43,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const data = (profile as { data?: Record<string, string> }).data ?? {};
         const username = data.username ?? null;
         const xUserId = data.id ?? null;
-        const role = username && adminUsernames().includes(username.toLowerCase())
-          ? "ADMIN"
-          : "EMPLOYEE";
 
+        // Env can only elevate; runtime promotions (e.g. a super admin making
+        // someone an admin) are preserved across logins.
+        let role: string = envRoleFor(username);
         if (user.id) {
+          const existing = await prisma.user.findUnique({
+            where: { id: user.id },
+            select: { role: true },
+          });
+          role = highestRole(role, existing?.role ?? "EMPLOYEE");
           await prisma.user.update({
             where: { id: user.id },
             data: { username, xUserId, role },
