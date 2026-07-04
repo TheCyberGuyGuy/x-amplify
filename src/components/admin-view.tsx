@@ -176,12 +176,12 @@ export function AdminView({
                   <div className="h-10 w-10 shrink-0 rounded-full bg-[var(--surface-2)]" />
                 )}
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex min-w-0 items-center gap-1.5">
                     <span className="truncate font-medium">
                       {h.displayName ?? h.username}
                     </span>
                     {h.isEtoroVerified && (
-                      <span title="eToro affiliated" className="text-[var(--brand)]">
+                      <span title="eToro affiliated" className="shrink-0 text-[var(--brand)]">
                         <CheckBadge className="h-3.5 w-3.5" />
                       </span>
                     )}

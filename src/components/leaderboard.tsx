@@ -64,12 +64,12 @@ export function Leaderboard() {
             )}
 
             <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-1.5">
+              <div className="flex min-w-0 items-center gap-1.5">
                 <span className="truncate text-sm font-semibold">
                   {r.name ?? r.username ?? "Unknown"}
                 </span>
                 {r.isMe && (
-                  <span className="rounded-full bg-[var(--brand)]/20 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--brand)]">
+                  <span className="shrink-0 rounded-full bg-[var(--brand)]/20 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--brand)]">
                     You
                   </span>
                 )}

@@ -41,17 +41,17 @@ export function FollowCard({
       )}
 
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-1.5">
+        <div className="flex min-w-0 items-center gap-1.5">
           <span className="truncate font-semibold">
             {member.displayName ?? member.username}
           </span>
           {member.isEtoroVerified && (
-            <span title="eToro affiliated" className="text-[var(--brand)]">
+            <span title="eToro affiliated" className="shrink-0 text-[var(--brand)]">
               <CheckBadge className="h-4 w-4" />
             </span>
           )}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex min-w-0 items-center gap-2">
           <span className="truncate text-sm text-[var(--muted)]">
             @{member.username}
           </span>
