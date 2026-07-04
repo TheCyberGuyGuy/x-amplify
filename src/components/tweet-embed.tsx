@@ -64,6 +64,12 @@ export function TweetEmbed({
     const el = ref.current;
     if (!el) return;
     el.innerHTML = "";
+    setState("loading");
+
+    // Safety net: never hang on "Loading…" — fall back to a link after a while.
+    const timeout = setTimeout(() => {
+      if (!cancelled) setState((s) => (s === "loading" ? "error" : s));
+    }, 12000);
 
     loadWidgets().then((twttr) => {
       if (cancelled || !el) return;
@@ -74,12 +80,12 @@ export function TweetEmbed({
       const isDark =
         typeof document !== "undefined" &&
         document.documentElement.classList.contains("dark");
+      // The target must be attached and visible for the iframe to lay out.
       twttr.widgets
         .createTweet(tweetId, el, {
           theme: isDark ? "dark" : "light",
           conversation: "none",
           dnt: true,
-          width: 350,
         })
         .then((node) => {
           if (cancelled) return;
@@ -90,6 +96,7 @@ export function TweetEmbed({
 
     return () => {
       cancelled = true;
+      clearTimeout(timeout);
     };
   }, [tweetId]);
 
@@ -110,7 +117,8 @@ export function TweetEmbed({
           View latest post by @{username} on X ↗
         </a>
       )}
-      <div ref={ref} className={state === "ready" ? "" : "hidden"} />
+      {/* Always mounted & visible so createTweet can measure and render. */}
+      <div ref={ref} />
     </div>
   );
 }
