@@ -170,10 +170,10 @@ export function AdminView({
                     alt=""
                     width={40}
                     height={40}
-                    className="h-10 w-10 rounded-full ring-1 ring-[var(--border)]"
+                    className="h-10 w-10 shrink-0 rounded-full ring-1 ring-[var(--border)]"
                   />
                 ) : (
-                  <div className="h-10 w-10 rounded-full bg-[var(--surface-2)]" />
+                  <div className="h-10 w-10 shrink-0 rounded-full bg-[var(--surface-2)]" />
                 )}
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1.5">
@@ -195,49 +195,52 @@ export function AdminView({
                   </div>
                 </div>
 
-                {/* Type editor (admin + super admin) */}
-                <select
-                  value={h.type ?? ""}
-                  onChange={(e) => changeType(h, e.target.value as PoolType)}
-                  className="rounded-full border border-[var(--border)] bg-[var(--background)] px-3 py-1.5 text-xs outline-none focus:border-[var(--brand)]/50"
-                >
-                  {!h.type && <option value="">Unassigned</option>}
-                  {ALL_POOL_TYPES.map((t) => (
-                    <option key={t} value={t}>
-                      {POOL_TYPES[t].label}
-                    </option>
-                  ))}
-                </select>
+                {/* Controls — own full-width row on mobile, inline on wider screens */}
+                <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+                  {/* Type editor (admin + super admin) */}
+                  <select
+                    value={h.type ?? ""}
+                    onChange={(e) => changeType(h, e.target.value as PoolType)}
+                    className="rounded-full border border-[var(--border)] bg-[var(--background)] px-3 py-1.5 text-xs outline-none focus:border-[var(--brand)]/50"
+                  >
+                    {!h.type && <option value="">Unassigned</option>}
+                    {ALL_POOL_TYPES.map((t) => (
+                      <option key={t} value={t}>
+                        {POOL_TYPES[t].label}
+                      </option>
+                    ))}
+                  </select>
 
-                {canToggleAdmin && (
+                  {canToggleAdmin && (
+                    <button
+                      onClick={() => toggleAdmin(h)}
+                      className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
+                        h.userRole === "ADMIN"
+                          ? "border-sky-400/40 text-sky-300 hover:border-red-500/40 hover:text-red-400"
+                          : "border-[var(--border)] text-[var(--muted)] hover:border-sky-400/40 hover:text-sky-300"
+                      }`}
+                    >
+                      {h.userRole === "ADMIN" ? "Remove admin" : "Make admin"}
+                    </button>
+                  )}
+
                   <button
-                    onClick={() => toggleAdmin(h)}
+                    onClick={() => toggleActive(h)}
                     className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
-                      h.userRole === "ADMIN"
-                        ? "border-sky-400/40 text-sky-300 hover:border-red-500/40 hover:text-red-400"
-                        : "border-[var(--border)] text-[var(--muted)] hover:border-sky-400/40 hover:text-sky-300"
+                      h.active
+                        ? "border-[var(--brand)]/30 text-[var(--brand)]"
+                        : "border-[var(--border)] text-[var(--muted)]"
                     }`}
                   >
-                    {h.userRole === "ADMIN" ? "Remove admin" : "Make admin"}
+                    {h.active ? "Active" : "Hidden"}
                   </button>
-                )}
-
-                <button
-                  onClick={() => toggleActive(h)}
-                  className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
-                    h.active
-                      ? "border-[var(--brand)]/30 text-[var(--brand)]"
-                      : "border-[var(--border)] text-[var(--muted)]"
-                  }`}
-                >
-                  {h.active ? "Active" : "Hidden"}
-                </button>
-                <button
-                  onClick={() => remove(h.id)}
-                  className="rounded-full border border-[var(--border)] px-3 py-1.5 text-xs font-medium text-[var(--muted)] transition hover:border-red-500/40 hover:text-red-400"
-                >
-                  Remove
-                </button>
+                  <button
+                    onClick={() => remove(h.id)}
+                    className="ml-auto rounded-full border border-[var(--border)] px-3 py-1.5 text-xs font-medium text-[var(--muted)] transition hover:border-red-500/40 hover:text-red-400 sm:ml-0"
+                  >
+                    Remove
+                  </button>
+                </div>
               </li>
             );
           })}

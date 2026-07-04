@@ -40,7 +40,7 @@ function ProgressRing({ value, total }: { value: number; total: number }) {
   const r = 34;
   const c = 2 * Math.PI * r;
   return (
-    <div className="relative grid h-24 w-24 place-items-center">
+    <div className="relative grid h-24 w-24 shrink-0 place-items-center">
       <svg viewBox="0 0 80 80" className="h-24 w-24 -rotate-90">
         <circle cx="40" cy="40" r={r} fill="none" stroke="var(--border)" strokeWidth="7" />
         <motion.circle
@@ -173,12 +173,12 @@ export function DashboardView() {
   }
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-8 sm:space-y-10">
       {/* Progress hero — overall, across all types */}
-      <div className="flex items-center gap-6 rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-6">
+      <div className="flex items-center gap-4 rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-5 sm:gap-6 sm:p-6">
         <ProgressRing value={allFollowing.length} total={total} />
-        <div>
-          <h2 className="text-xl font-bold tracking-tight">
+        <div className="min-w-0">
+          <h2 className="text-lg font-bold tracking-tight sm:text-xl">
             You follow {allFollowing.length} of {total} in the network
           </h2>
           <p className="mt-1 text-sm text-[var(--muted)]">

@@ -17,17 +17,17 @@ export function SiteHeader({
 }) {
   return (
     <header className="sticky top-0 z-20 border-b border-[var(--border)] bg-[var(--background)]/70 backdrop-blur-xl">
-      <div className="mx-auto flex max-w-5xl items-center justify-between px-5 py-3.5">
-        <Link href="/dashboard" className="flex items-center gap-2.5">
-          <span className="grid h-8 w-8 place-items-center rounded-lg bg-[var(--brand)] font-black text-[var(--brand-contrast)]">
+      <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-3.5 sm:px-5">
+        <Link href="/dashboard" className="flex min-w-0 items-center gap-2.5">
+          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[var(--brand)] font-black text-[var(--brand-contrast)]">
             e
           </span>
-          <span className="text-sm font-semibold tracking-tight">
+          <span className="truncate text-sm font-semibold tracking-tight">
             eToro <span className="text-[var(--brand)]">X-Amplify</span>
           </span>
         </Link>
 
-        <div className="flex items-center gap-3">
+        <div className="flex shrink-0 items-center gap-2 sm:gap-3">
           {(role === "ADMIN" || role === "SUPER_ADMIN") && (
             <Link
               href="/admin"

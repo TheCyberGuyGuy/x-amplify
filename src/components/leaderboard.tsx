@@ -24,12 +24,12 @@ export function Leaderboard() {
   if (rows.length === 0) return null;
 
   return (
-    <section className="rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-6">
+    <section className="rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-4 sm:p-6">
       <div className="mb-4 flex items-baseline justify-between gap-2">
         <h3 className="text-sm font-semibold uppercase tracking-wider text-[var(--muted)]">
           Network leaderboard
         </h3>
-        <span className="text-xs text-[var(--muted)]/70">
+        <span className="hidden text-xs text-[var(--muted)]/70 sm:inline">
           who follows the most of the pool
         </span>
       </div>
