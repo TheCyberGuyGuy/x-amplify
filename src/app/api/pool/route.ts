@@ -73,6 +73,31 @@ export async function GET() {
       };
     });
 
+    // Snapshot this viewer's follow state for the leaderboard. Best-effort:
+    // never let a write failure break the dashboard.
+    try {
+      await prisma.$transaction(
+        members.map((m) =>
+          prisma.followState.upsert({
+            where: {
+              userId_poolHandleId: {
+                userId: session.user.id,
+                poolHandleId: m.id,
+              },
+            },
+            create: {
+              userId: session.user.id,
+              poolHandleId: m.id,
+              following: m.following,
+            },
+            update: { following: m.following },
+          })
+        )
+      );
+    } catch {
+      // ignore — leaderboard will just be slightly stale for this user
+    }
+
     return NextResponse.json({
       following: members.filter((m) => m.following),
       toFollow: members.filter((m) => !m.following),

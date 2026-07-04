@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { signIn } from "next-auth/react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { FollowCard } from "@/components/follow-card";
+import { Leaderboard } from "@/components/leaderboard";
 import { TweetEmbed } from "@/components/tweet-embed";
 import { Spinner } from "@/components/icons";
 import type { PoolMember } from "@/app/api/pool/route";
@@ -75,6 +76,12 @@ export function DashboardView() {
 
   const [filter, setFilter] = useState<PoolType | "ALL">("ALL");
   const [refreshing, setRefreshing] = useState(false);
+
+  // Once the pool load has snapshotted this viewer's follow state, refresh the
+  // leaderboard so their own row reflects the latest counts.
+  useEffect(() => {
+    if (data) qc.invalidateQueries({ queryKey: ["leaderboard"] });
+  }, [data, qc]);
 
   async function refreshTimeline() {
     if (refreshing) return;
@@ -181,6 +188,8 @@ export function DashboardView() {
           </p>
         </div>
       </div>
+
+      <Leaderboard />
 
       {/* Type filter tabs */}
       {presentTypes.length > 1 && (

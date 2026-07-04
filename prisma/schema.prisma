@@ -26,6 +26,7 @@ model User {
   sessions     Session[]
   addedHandles PoolHandle[]  @relation("AddedBy")
   followEvents FollowEvent[]
+  followStates FollowState[]
 }
 
 model Account {
@@ -83,6 +84,22 @@ model PoolHandle {
   tweetsCheckedAt DateTime?
 
   followEvents FollowEvent[]
+  followStates FollowState[]
+}
+
+// Snapshot of whether a logged-in user follows a pool handle, captured on
+// each dashboard load. Powers the network leaderboard (we can only know a
+// person's follow state while they themselves are authenticated).
+model FollowState {
+  id           String     @id @default(cuid())
+  userId       String
+  poolHandleId String
+  following    Boolean
+  updatedAt    DateTime   @updatedAt
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  poolHandle   PoolHandle @relation(fields: [poolHandleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, poolHandleId])
 }
 
 model FollowEvent {
