@@ -77,13 +77,11 @@ export function TweetEmbed({
         setState("error");
         return;
       }
-      const isDark =
-        typeof document !== "undefined" &&
-        document.documentElement.classList.contains("dark");
       // The target must be attached and visible for the iframe to lay out.
+      // The portal is dark-only, so pin the embed theme to dark to match.
       twttr.widgets
         .createTweet(tweetId, el, {
-          theme: isDark ? "dark" : "light",
+          theme: "dark",
           conversation: "none",
           dnt: true,
         })
