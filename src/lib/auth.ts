@@ -36,7 +36,24 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
   callbacks: {
-    async jwt({ token, user, profile }) {
+    async jwt({ token, user, account, profile }) {
+      // Auth.js only stores tokens on the FIRST account link, so on every
+      // subsequent login we refresh the stored access/refresh tokens ourselves —
+      // otherwise they go stale and X lookups start failing with 401.
+      if (account) {
+        await prisma.account.updateMany({
+          where: {
+            provider: "twitter",
+            providerAccountId: account.providerAccountId,
+          },
+          data: {
+            access_token: account.access_token,
+            refresh_token: account.refresh_token ?? undefined,
+            expires_at: account.expires_at as number | undefined,
+          },
+        });
+      }
+
       // On initial sign-in, capture the X handle + assign role, persist to DB.
       if (user && profile) {
         // Twitter v2 profile: { data: { id, name, username, profile_image_url } }
