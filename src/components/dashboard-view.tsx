@@ -5,8 +5,10 @@ import { signIn } from "next-auth/react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { FollowCard } from "@/components/follow-card";
+import { TweetEmbed } from "@/components/tweet-embed";
 import { Spinner } from "@/components/icons";
 import type { PoolMember } from "@/app/api/pool/route";
+import type { TimelineEntry } from "@/app/api/timeline/route";
 import { ALL_POOL_TYPES, POOL_TYPES, type PoolType } from "@/lib/pool-types";
 
 type PoolResponse = {
@@ -21,6 +23,14 @@ async function fetchPool(): Promise<PoolResponse> {
     const body = await res.json().catch(() => ({}));
     throw new Error(body.error ?? "Failed to load your network.");
   }
+  return res.json();
+}
+
+type TimelineResponse = { entries: TimelineEntry[]; isAdmin: boolean };
+
+async function fetchTimeline(): Promise<TimelineResponse> {
+  const res = await fetch("/api/timeline");
+  if (!res.ok) throw new Error("Failed to load the timeline.");
   return res.json();
 }
 
@@ -57,8 +67,30 @@ export function DashboardView() {
     queryKey: ["pool"],
     queryFn: fetchPool,
   });
+  const { data: timeline } = useQuery({
+    queryKey: ["timeline"],
+    queryFn: fetchTimeline,
+    staleTime: 5 * 60 * 1000, // cached server-side anyway; don't refetch eagerly
+  });
 
   const [filter, setFilter] = useState<PoolType | "ALL">("ALL");
+  const [refreshing, setRefreshing] = useState(false);
+
+  async function refreshTimeline() {
+    if (refreshing) return;
+    setRefreshing(true);
+    try {
+      const res = await fetch("/api/timeline", { method: "POST" });
+      if (res.ok) {
+        const fresh = (await res.json()) as TimelineResponse;
+        qc.setQueryData(["timeline"], fresh);
+      }
+    } catch {
+      // Non-fatal — leave the current posts in place.
+    } finally {
+      setRefreshing(false);
+    }
+  }
 
   function recordFollow(m: PoolMember) {
     fetch("/api/follow", {
@@ -185,6 +217,42 @@ export function DashboardView() {
           </div>
         </section>
       )}
+
+      {(() => {
+        const posts = (timeline?.entries ?? []).filter(
+          (e) => filter === "ALL" || e.type === filter
+        );
+        if (posts.length === 0) return null;
+        return (
+          <section>
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <SectionHeading
+                title="Latest posts — like & reply"
+                count={posts.length}
+              />
+              {timeline?.isAdmin && (
+                <button
+                  onClick={refreshTimeline}
+                  disabled={refreshing}
+                  className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[var(--border)] px-3 py-1.5 text-xs font-medium text-[var(--muted)] transition hover:text-[var(--foreground)] disabled:opacity-60"
+                >
+                  {refreshing && <Spinner className="h-3.5 w-3.5" />}
+                  {refreshing ? "Refreshing…" : "Refresh posts"}
+                </button>
+              )}
+            </div>
+            <div className="columns-1 gap-4 sm:columns-2 lg:columns-3 [&>*]:mb-4 [&>*]:break-inside-avoid">
+              {posts.map((e) => (
+                <TweetEmbed
+                  key={e.id}
+                  tweetId={e.latestTweetId!}
+                  username={e.username}
+                />
+              ))}
+            </div>
+          </section>
+        );
+      })()}
     </div>
   );
 }

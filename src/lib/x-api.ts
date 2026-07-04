@@ -128,6 +128,46 @@ export async function lookupUsersByUsernames(
   return out;
 }
 
+export type LatestTweet = { id: string; createdAt: string | null };
+
+/**
+ * Latest *original* post (no replies/retweets) for a given X user id.
+ * Returns null if the account has no qualifying posts.
+ *
+ * Cost note: pool members are third parties, so this bills as a standard
+ * read (~$0.005/post), deduplicated per resource within a 24h UTC window.
+ * Callers MUST cache the result (see the tweetsCheckedAt TTL) rather than
+ * calling this per page view.
+ */
+export async function fetchLatestTweet(
+  xUserId: string,
+  token: string
+): Promise<LatestTweet | null> {
+  const params = new URLSearchParams({
+    max_results: "5", // 5 is the endpoint minimum
+    exclude: "replies,retweets",
+    "tweet.fields": "created_at",
+  });
+  const res = await xFetch(`/users/${xUserId}/tweets?${params}`, token);
+  if (res.status === 429) {
+    throw new XApiError(429, "X rate limit reached. Try again in a few minutes.");
+  }
+  if (!res.ok) {
+    throw new XApiError(res.status, `X timeline lookup failed (${res.status}).`);
+  }
+  const json = (await res.json()) as {
+    data?: { id: string; created_at?: string }[];
+  };
+  const newest = json.data?.[0]; // endpoint returns reverse-chronological
+  if (!newest) return null;
+  return { id: newest.id, createdAt: newest.created_at ?? null };
+}
+
+/** X user ids are numeric strings; anything else (e.g. a stray cuid) is invalid. */
+export function isValidXUserId(id: string | null | undefined): id is string {
+  return !!id && /^\d+$/.test(id);
+}
+
 /** Resolve a single handle (for admin add). */
 export async function lookupUserByUsername(
   username: string,

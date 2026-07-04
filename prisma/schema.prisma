@@ -77,6 +77,10 @@ model PoolHandle {
   addedById       String?
   addedBy         User?    @relation("AddedBy", fields: [addedById], references: [id])
   createdAt       DateTime @default(now())
+  // Cached latest original post (shared across all viewers; refreshed on a TTL).
+  latestTweetId   String?
+  latestTweetAt   DateTime?
+  tweetsCheckedAt DateTime?
 
   followEvents FollowEvent[]
 }
