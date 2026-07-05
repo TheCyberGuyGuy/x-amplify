@@ -4,6 +4,19 @@ import { prisma } from "@/lib/prisma";
 
 const ACTIONS = new Set(["LIKE", "REPOST", "QUOTE"]);
 
+// GET /api/engage — has the current user ever boosted a post? Powers the
+// "Boost a post" step in the dashboard flow banner.
+export async function GET() {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  const count = await prisma.engagementEvent.count({
+    where: { userId: session.user.id },
+  });
+  return NextResponse.json({ count });
+}
+
 // POST /api/engage — record a boost click (like/repost/quote intent) on a
 // discovered post. Mirrors /api/follow: the real action happens on X via an
 // intent link; this is just the pilot metric.

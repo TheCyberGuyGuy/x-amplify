@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useQueryClient } from "@tanstack/react-query";
 import { TweetEmbed } from "@/components/tweet-embed";
 
 // Focused "boost this post" card shown when the dashboard is opened from a
@@ -14,6 +15,7 @@ export function BoostCard({
   tweetId: string;
   username: string;
 }) {
+  const qc = useQueryClient();
   const postUrl = `https://x.com/${username || "i"}/status/${tweetId}`;
 
   function track(action: "LIKE" | "REPOST" | "QUOTE") {
@@ -21,7 +23,10 @@ export function BoostCard({
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ tweetId, action }),
-    }).catch(() => {});
+    })
+      // Lets the flow banner tick off "Boost a post" immediately.
+      .then(() => qc.invalidateQueries({ queryKey: ["engaged"] }))
+      .catch(() => {});
   }
 
   return (

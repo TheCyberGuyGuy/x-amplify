@@ -5,6 +5,7 @@ import { signIn } from "next-auth/react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { BoostCard } from "@/components/boost-card";
+import { FlowBanner } from "@/components/flow-banner";
 import { FollowCard } from "@/components/follow-card";
 import { Leaderboard } from "@/components/leaderboard";
 import { TweetEmbed } from "@/components/tweet-embed";
@@ -177,12 +178,24 @@ export function DashboardView({
     );
   }
 
+  const newestPost = (timeline?.entries ?? []).find((e) => e.latestTweetId);
+
   return (
     <div className="space-y-8 sm:space-y-10">
       {/* Deep link from a push notification: boost this post first */}
       {focusPost && (
         <BoostCard tweetId={focusPost.tweetId} username={focusPost.username} />
       )}
+
+      {/* Guided next steps — hides itself once everything is done */}
+      <FlowBanner
+        toFollowCount={allToFollow.length}
+        latestPost={
+          newestPost
+            ? { tweetId: newestPost.latestTweetId!, username: newestPost.username }
+            : null
+        }
+      />
 
       {/* Progress hero — overall, across all types */}
       <div className="flex items-center gap-4 rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-5 sm:gap-6 sm:p-6">
@@ -216,7 +229,7 @@ export function DashboardView({
       )}
 
       {toFollow.length > 0 && (
-        <section>
+        <section id="to-follow" className="scroll-mt-20">
           <SectionHeading title="People to follow" count={toFollow.length} />
           <div className="grid gap-3 sm:grid-cols-2">
             {toFollow.map((m) => (
@@ -243,7 +256,7 @@ export function DashboardView({
         );
         if (posts.length === 0) return null;
         return (
-          <section>
+          <section id="latest-posts" className="scroll-mt-20">
             <div className="mb-3 flex items-center justify-between gap-2">
               <SectionHeading
                 title="Latest posts — like & reply"
