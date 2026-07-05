@@ -163,6 +163,124 @@ export async function fetchLatestTweet(
   return { id: newest.id, createdAt: newest.created_at ?? null };
 }
 
+/**
+ * App-only bearer token for endpoints that need no user context
+ * (search/recent). Static token from the X developer portal.
+ */
+export function getAppBearerToken(): string {
+  const token = process.env.X_BEARER_TOKEN;
+  if (!token) {
+    throw new XApiError(500, "X_BEARER_TOKEN is not configured.");
+  }
+  return token;
+}
+
+export type DiscoveredPost = {
+  tweetId: string;
+  authorId: string;
+  authorUsername: string; // lowercase
+  text: string;
+  createdAt: string;
+};
+
+export type SearchResult = {
+  posts: DiscoveredPost[];
+  requestCount: number;
+};
+
+// search/recent query hard limit on Basic tier.
+const SEARCH_QUERY_MAX = 512;
+const SEARCH_SUFFIX = " -is:retweet -is:reply";
+// Safety valve: never page past this many requests per chunk in one poll.
+const SEARCH_MAX_PAGES = 3;
+
+/** Greedily pack `from:` terms into as few <=512-char queries as possible. */
+export function buildSearchQueries(usernames: string[]): string[] {
+  const queries: string[] = [];
+  let terms: string[] = [];
+  let len = 0;
+  for (const raw of usernames) {
+    const term = `from:${raw.trim().replace(/^@/, "")}`;
+    // "(" + terms joined by " OR " + ")" + suffix
+    const projected = len + (terms.length ? 4 : 0) + term.length;
+    if (terms.length && projected + 2 + SEARCH_SUFFIX.length > SEARCH_QUERY_MAX) {
+      queries.push(`(${terms.join(" OR ")})${SEARCH_SUFFIX}`);
+      terms = [];
+      len = 0;
+    }
+    len += (terms.length ? 4 : 0) + term.length;
+    terms.push(term);
+  }
+  if (terms.length) queries.push(`(${terms.join(" OR ")})${SEARCH_SUFFIX}`);
+  return queries;
+}
+
+/**
+ * All original posts (no retweets/replies; quotes included) by the given
+ * usernames since `startTime`, via batched search/recent (app-only auth).
+ *
+ * Cost note: this is THE cost-control primitive. One request covers ~30
+ * handles, and an empty result reads zero posts — so cost scales with posts
+ * actually published, not with polling frequency or pool size. Callers must
+ * still enforce the monthly read budget (see /api/cron/poll).
+ */
+export async function searchRecentPosts(
+  usernames: string[],
+  startTime: Date,
+  token: string
+): Promise<SearchResult> {
+  const posts: DiscoveredPost[] = [];
+  let requestCount = 0;
+
+  for (const query of buildSearchQueries(usernames)) {
+    let nextToken: string | undefined;
+    for (let page = 0; page < SEARCH_MAX_PAGES; page++) {
+      const params = new URLSearchParams({
+        query,
+        start_time: startTime.toISOString(),
+        max_results: "100",
+        "tweet.fields": "created_at,author_id,text",
+        expansions: "author_id",
+        "user.fields": "username",
+      });
+      if (nextToken) params.set("next_token", nextToken);
+
+      const res = await xFetch(`/tweets/search/recent?${params}`, token);
+      requestCount++;
+      if (res.status === 429) {
+        // Rate limited: return what we have; the next poll's overlap window
+        // re-covers this period, so nothing is lost.
+        return { posts, requestCount };
+      }
+      if (!res.ok) {
+        throw new XApiError(res.status, `X search failed (${res.status}).`);
+      }
+      const json = (await res.json()) as {
+        data?: { id: string; author_id: string; text: string; created_at?: string }[];
+        includes?: { users?: { id: string; username: string }[] };
+        meta?: { next_token?: string };
+      };
+
+      const userById = new Map(
+        (json.includes?.users ?? []).map((u) => [u.id, u.username.toLowerCase()])
+      );
+      for (const t of json.data ?? []) {
+        posts.push({
+          tweetId: t.id,
+          authorId: t.author_id,
+          authorUsername: userById.get(t.author_id) ?? "",
+          text: t.text,
+          createdAt: t.created_at ?? new Date().toISOString(),
+        });
+      }
+
+      nextToken = json.meta?.next_token;
+      if (!nextToken) break;
+    }
+  }
+  return { posts, requestCount };
+}
+
 /** X user ids are numeric strings; anything else (e.g. a stray cuid) is invalid. */
 export function isValidXUserId(id: string | null | undefined): id is string {
   return !!id && /^\d+$/.test(id);

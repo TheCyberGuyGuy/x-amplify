@@ -82,9 +82,42 @@ model PoolHandle {
   latestTweetId   String?
   latestTweetAt   DateTime?
   tweetsCheckedAt DateTime?
+  // Opt-in per handle: only flagged handles trigger browser push notifications.
+  pushEnabled     Boolean  @default(false)
 
   followEvents FollowEvent[]
   followStates FollowState[]
+  posts        Post[]
+}
+
+// A post discovered by the cron poll. tweetId uniqueness is the dedupe anchor:
+// polls overlap their time windows on purpose, so re-seen tweets are no-ops.
+model Post {
+  id           String     @id @default(cuid())
+  tweetId      String     @unique
+  poolHandleId String
+  text         String? // truncated preview, used for notification bodies
+  postedAt     DateTime
+  discoveredAt DateTime   @default(now())
+  notifiedAt   DateTime? // null = no push sent (yet) for this post
+  poolHandle   PoolHandle @relation(fields: [poolHandleId], references: [id], onDelete: Cascade)
+
+  @@index([poolHandleId, postedAt])
+}
+
+// Audit log of cron polls. postsRead sums to the month's X read spend
+// (pay-per-read pricing), which the poller checks against a hard budget.
+model PollRun {
+  id           String    @id @default(cuid())
+  startedAt    DateTime  @default(now())
+  finishedAt   DateTime?
+  requestCount Int       @default(0)
+  postsRead    Int       @default(0)
+  newPosts     Int       @default(0)
+  status       String // RUNNING | SUCCESS | ERROR
+  error        String?
+
+  @@index([startedAt])
 }
 
 // Snapshot of whether a logged-in user follows a pool handle, captured on

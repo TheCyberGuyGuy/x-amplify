@@ -14,8 +14,10 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-  // Gate everything except the gate itself, the auth/gate APIs, and assets.
+  // Gate everything except the gate itself, the auth/gate APIs, the cron
+  // endpoint (secured by CRON_SECRET, and schedulers can't pass the cookie),
+  // the service worker (must load from root scope pre-auth), and assets.
   matcher: [
-    "/((?!gate|api/gate|api/auth|_next/static|_next/image|favicon.ico).*)",
+    "/((?!gate|api/gate|api/auth|api/cron|sw.js|manifest.json|_next/static|_next/image|favicon.ico).*)",
   ],
 };
