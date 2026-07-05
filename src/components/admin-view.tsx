@@ -12,6 +12,7 @@ type Handle = {
   profileImage: string | null;
   isEtoroVerified: boolean;
   active: boolean;
+  pushEnabled: boolean;
   type: string | null;
   userRole: string | null; // role of the linked User, if they've logged in
 };
@@ -77,6 +78,15 @@ export function AdminView({
     patch(h.id, { active: !h.active });
     setHandles((list) =>
       list.map((x) => (x.id === h.id ? { ...x, active: !x.active } : x))
+    );
+  }
+
+  function togglePush(h: Handle) {
+    patch(h.id, { pushEnabled: !h.pushEnabled });
+    setHandles((list) =>
+      list.map((x) =>
+        x.id === h.id ? { ...x, pushEnabled: !x.pushEnabled } : x
+      )
     );
   }
 
@@ -223,6 +233,22 @@ export function AdminView({
                       {h.userRole === "ADMIN" ? "Remove admin" : "Make admin"}
                     </button>
                   )}
+
+                  <button
+                    onClick={() => togglePush(h)}
+                    title={
+                      h.pushEnabled
+                        ? "New posts trigger push notifications — click to disable"
+                        : "Notify everyone when this handle posts"
+                    }
+                    className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
+                      h.pushEnabled
+                        ? "border-[var(--brand)]/30 text-[var(--brand)]"
+                        : "border-[var(--border)] text-[var(--muted)] hover:text-[var(--foreground)]"
+                    }`}
+                  >
+                    {h.pushEnabled ? "🔔 Push on" : "🔕 Push off"}
+                  </button>
 
                   <button
                     onClick={() => toggleActive(h)}

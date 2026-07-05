@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { signIn } from "next-auth/react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
+import { BoostCard } from "@/components/boost-card";
 import { FollowCard } from "@/components/follow-card";
 import { Leaderboard } from "@/components/leaderboard";
 import { TweetEmbed } from "@/components/tweet-embed";
@@ -62,7 +63,11 @@ function ProgressRing({ value, total }: { value: number; total: number }) {
   );
 }
 
-export function DashboardView() {
+export function DashboardView({
+  focusPost,
+}: {
+  focusPost?: { tweetId: string; username: string } | null;
+}) {
   const qc = useQueryClient();
   const { data, isLoading, error } = useQuery({
     queryKey: ["pool"],
@@ -174,6 +179,11 @@ export function DashboardView() {
 
   return (
     <div className="space-y-8 sm:space-y-10">
+      {/* Deep link from a push notification: boost this post first */}
+      {focusPost && (
+        <BoostCard tweetId={focusPost.tweetId} username={focusPost.username} />
+      )}
+
       {/* Progress hero — overall, across all types */}
       <div className="flex items-center gap-4 rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-5 sm:gap-6 sm:p-6">
         <ProgressRing value={allFollowing.length} total={total} />

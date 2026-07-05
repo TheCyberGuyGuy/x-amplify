@@ -10,7 +10,7 @@ async function requireAdmin() {
   return session;
 }
 
-// PATCH /api/pool/:id — edit a handle: toggle active and/or change type (admin+).
+// PATCH /api/pool/:id — edit a handle: toggle active/pushEnabled, change type (admin+).
 export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -22,10 +22,12 @@ export async function PATCH(
   const body = (await req.json().catch(() => ({}))) as {
     active?: boolean;
     type?: string;
+    pushEnabled?: boolean;
   };
 
-  const data: { active?: boolean; type?: string } = {};
+  const data: { active?: boolean; type?: string; pushEnabled?: boolean } = {};
   if (typeof body.active === "boolean") data.active = body.active;
+  if (typeof body.pushEnabled === "boolean") data.pushEnabled = body.pushEnabled;
   if (body.type !== undefined) {
     if (!isPoolType(body.type)) {
       return NextResponse.json({ error: "Invalid type." }, { status: 400 });

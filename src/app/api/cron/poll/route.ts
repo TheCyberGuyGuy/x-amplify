@@ -6,6 +6,7 @@ import {
   XApiError,
   type DiscoveredPost,
 } from "@/lib/x-api";
+import { notifyNewPosts, type NotifiablePost } from "@/lib/push";
 
 // GET /api/cron/poll — discover new posts from the active pool via one
 // batched search request, and persist them. No pushes are sent here (yet);
@@ -60,14 +61,24 @@ async function postsReadThisMonth(): Promise<number> {
   return agg._sum.postsRead ?? 0;
 }
 
-type HandleRef = { id: string; latestTweetAt: Date | null };
+type HandleRef = {
+  id: string;
+  latestTweetAt: Date | null;
+  pushEnabled: boolean;
+  xUserId: string | null;
+  displayName: string | null;
+};
 
-/** Persist discovered posts; returns how many were genuinely new. */
+/**
+ * Persist discovered posts. Returns the count of genuinely new posts and,
+ * among those, the push-enabled ones ready to notify about.
+ */
 async function persistPosts(
   posts: DiscoveredPost[],
   handleByUsername: Map<string, HandleRef>
-): Promise<number> {
-  let created = 0;
+): Promise<{ newCount: number; notifiable: NotifiablePost[] }> {
+  let newCount = 0;
+  const created: NotifiablePost[] = [];
   for (const p of posts) {
     const handle = handleByUsername.get(p.authorUsername);
     if (!handle) continue; // author not (or no longer) in the pool
@@ -83,7 +94,25 @@ async function persistPosts(
       skipDuplicates: true,
     });
     if (result.count === 0) continue; // overlap re-discovery
-    created++;
+    newCount++;
+
+    if (handle.pushEnabled) {
+      const post = await prisma.post.findUnique({
+        where: { tweetId: p.tweetId },
+        select: { id: true },
+      });
+      if (post) {
+        created.push({
+          id: post.id,
+          tweetId: p.tweetId,
+          text: p.text,
+          postedAt,
+          authorUsername: p.authorUsername,
+          authorXUserId: handle.xUserId,
+          authorDisplayName: handle.displayName,
+        });
+      }
+    }
 
     // Keep the dashboard timeline cache fresh as a side effect, so the
     // per-viewer refresh path in /api/timeline rarely needs to fire.
@@ -99,7 +128,7 @@ async function persistPosts(
       });
     }
   }
-  return created;
+  return { newCount, notifiable: created };
 }
 
 export async function GET(req: NextRequest) {
@@ -121,7 +150,14 @@ export async function GET(req: NextRequest) {
 
   const handles = await prisma.poolHandle.findMany({
     where: { active: true },
-    select: { id: true, username: true, latestTweetAt: true },
+    select: {
+      id: true,
+      username: true,
+      latestTweetAt: true,
+      pushEnabled: true,
+      xUserId: true,
+      displayName: true,
+    },
   });
   if (handles.length === 0) {
     return NextResponse.json({ skipped: "empty-pool" });
@@ -129,7 +165,13 @@ export async function GET(req: NextRequest) {
   const handleByUsername = new Map<string, HandleRef>(
     handles.map((h) => [
       h.username.toLowerCase(),
-      { id: h.id, latestTweetAt: h.latestTweetAt },
+      {
+        id: h.id,
+        latestTweetAt: h.latestTweetAt,
+        pushEnabled: h.pushEnabled,
+        xUserId: h.xUserId,
+        displayName: h.displayName,
+      },
     ])
   );
 
@@ -156,7 +198,23 @@ export async function GET(req: NextRequest) {
       startTime,
       getAppBearerToken()
     );
-    const newPosts = await persistPosts(posts, handleByUsername);
+    const { newCount, notifiable } = await persistPosts(posts, handleByUsername);
+
+    // Send pushes for fresh posts from push-enabled handles. Best-effort:
+    // a push failure must never mark the poll as failed (posts are saved).
+    let pushesSent = 0;
+    if (notifiable.length > 0) {
+      try {
+        pushesSent = await notifyNewPosts(notifiable);
+      } catch (e) {
+        console.error("[cron/poll] push send failed:", e);
+      }
+      // Stamp even on failure so a retried poll can't double-notify.
+      await prisma.post.updateMany({
+        where: { id: { in: notifiable.map((p) => p.id) } },
+        data: { notifiedAt: new Date() },
+      });
+    }
 
     await prisma.pollRun.update({
       where: { id: run.id },
@@ -165,14 +223,15 @@ export async function GET(req: NextRequest) {
         finishedAt: new Date(),
         requestCount,
         postsRead: posts.length,
-        newPosts,
+        newPosts: newCount,
       },
     });
     return NextResponse.json({
       ok: true,
       requestCount,
       postsRead: posts.length,
-      newPosts,
+      newPosts: newCount,
+      pushesSent,
       budget: { spent: spent + posts.length, total: budget },
     });
   } catch (e) {

@@ -22,11 +22,14 @@ model User {
   role          String    @default("EMPLOYEE") // EMPLOYEE | ADMIN
   createdAt     DateTime  @default(now())
 
-  accounts     Account[]
-  sessions     Session[]
-  addedHandles PoolHandle[]  @relation("AddedBy")
-  followEvents FollowEvent[]
-  followStates FollowState[]
+  accounts          Account[]
+  sessions          Session[]
+  addedHandles      PoolHandle[]       @relation("AddedBy")
+  followEvents      FollowEvent[]
+  followStates      FollowState[]
+  pushSubscriptions PushSubscription[]
+  notifications     NotificationLog[]
+  engagements       EngagementEvent[]
 }
 
 model Account {
@@ -102,7 +105,55 @@ model Post {
   notifiedAt   DateTime? // null = no push sent (yet) for this post
   poolHandle   PoolHandle @relation(fields: [poolHandleId], references: [id], onDelete: Cascade)
 
+  notifications NotificationLog[]
+  engagements   EngagementEvent[]
+
   @@index([poolHandleId, postedAt])
+}
+
+// One row per browser/device that opted into push. endpoint is the push
+// service's unique URL for that device; a 404/410 on send means the
+// subscription is dead and the row gets deleted.
+model PushSubscription {
+  id         String   @id @default(cuid())
+  userId     String
+  endpoint   String   @unique
+  p256dh     String
+  auth       String
+  createdAt  DateTime @default(now())
+  lastSeenAt DateTime @updatedAt
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// One row per (user, post) push actually sent. The unique constraint makes
+// double-sends structurally impossible; the daily cap counts recent rows.
+model NotificationLog {
+  id        String    @id @default(cuid())
+  userId    String
+  postId    String
+  sentAt    DateTime  @default(now())
+  clickedAt DateTime?
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post      Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, postId])
+  @@index([userId, sentAt])
+}
+
+// A boost click (like/repost/quote intent) on a discovered post.
+// Generalizes FollowEvent; the actual action happens on X via intent links.
+model EngagementEvent {
+  id        String   @id @default(cuid())
+  userId    String
+  postId    String
+  action    String // LIKE | REPOST | QUOTE
+  clickedAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, postId, action])
 }
 
 // Audit log of cron polls. postsRead sums to the month's X read spend

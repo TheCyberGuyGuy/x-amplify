@@ -15,6 +15,8 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "eToro X-Amplify",
   description: "Connect with your eToro colleagues on X.",
+  // PWA manifest — iOS only delivers web push to home-screen-installed apps.
+  manifest: "/manifest.json",
 };
 
 import { Providers } from "@/components/providers";

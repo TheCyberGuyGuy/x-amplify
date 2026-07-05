@@ -18,6 +18,6 @@ export const config = {
   // endpoint (secured by CRON_SECRET, and schedulers can't pass the cookie),
   // the service worker (must load from root scope pre-auth), and assets.
   matcher: [
-    "/((?!gate|api/gate|api/auth|api/cron|sw.js|manifest.json|_next/static|_next/image|favicon.ico).*)",
+    "/((?!gate|api/gate|api/auth|api/cron|sw.js|manifest.json|icon-192.png|icon-512.png|_next/static|_next/image|favicon.ico).*)",
   ],
 };
