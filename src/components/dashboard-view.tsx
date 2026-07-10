@@ -9,7 +9,9 @@ import { FlowBanner } from "@/components/flow-banner";
 import { FollowCard } from "@/components/follow-card";
 import { Leaderboard } from "@/components/leaderboard";
 import { TweetEmbed } from "@/components/tweet-embed";
+import { PushPrimer, pushPrimerSnoozed } from "@/components/push-primer";
 import { Spinner } from "@/components/icons";
+import { usePush } from "@/lib/use-push";
 import type { PoolMember } from "@/app/api/pool/route";
 import type { TimelineEntry } from "@/app/api/timeline/route";
 import { ALL_POOL_TYPES, POOL_TYPES, type PoolType } from "@/lib/pool-types";
@@ -70,6 +72,8 @@ export function DashboardView({
   focusPost?: { tweetId: string; username: string } | null;
 }) {
   const qc = useQueryClient();
+  const push = usePush();
+  const [primerOpen, setPrimerOpen] = useState(false);
   const { data, isLoading, error } = useQuery({
     queryKey: ["pool"],
     queryFn: fetchPool,
@@ -120,6 +124,9 @@ export function DashboardView({
         following: [{ ...m, following: true }, ...prev.following],
       };
     });
+    // High-intent moment: nudge for push right after a follow. Soft prompt
+    // only — enable() (the real browser dialog) fires from the primer's button.
+    if (push.state === "off" && !pushPrimerSnoozed()) setPrimerOpen(true);
   }
 
   if (isLoading) {
@@ -182,6 +189,15 @@ export function DashboardView({
 
   return (
     <div className="space-y-8 sm:space-y-10">
+      <PushPrimer
+        open={primerOpen}
+        onEnable={() => {
+          setPrimerOpen(false);
+          push.enable();
+        }}
+        onDismiss={() => setPrimerOpen(false)}
+      />
+
       {/* Deep link from a push notification: boost this post first */}
       {focusPost && (
         <BoostCard tweetId={focusPost.tweetId} username={focusPost.username} />

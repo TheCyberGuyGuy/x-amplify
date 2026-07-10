@@ -4,6 +4,7 @@ import { signOut } from "next-auth/react";
 import Link from "next/link";
 import Image from "next/image";
 import { NotificationToggle } from "@/components/notification-toggle";
+import { WhatsAppShare } from "@/components/whatsapp-share";
 
 export function SiteHeader({
   name,
@@ -29,6 +30,7 @@ export function SiteHeader({
         </Link>
 
         <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+          <WhatsAppShare />
           <NotificationToggle />
           {(role === "ADMIN" || role === "SUPER_ADMIN") && (
             <Link

@@ -21,6 +21,10 @@ model User {
   username      String?
   role          String    @default("EMPLOYEE") // EMPLOYEE | ADMIN
   createdAt     DateTime  @default(now())
+  // Watermark for the "new people joined" digest push: only joiners added to
+  // the pool after this time are included in this user's next digest. null =
+  // never sent (first digest looks back a fixed window instead).
+  joinDigestAt  DateTime?
 
   accounts          Account[]
   sessions          Session[]

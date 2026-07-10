@@ -11,6 +11,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const body = (await req.json().catch(() => ({}))) as { url?: string };
+
+  // Join-digest pushes aren't post notifications — don't let their clicks
+  // stamp an unrelated NotificationLog row.
+  if (body.url?.includes("join=1")) {
+    return NextResponse.json({ ok: true });
+  }
+
   const tweetId = body.url?.match(/[?&]post=(\d+)/)?.[1];
 
   if (tweetId) {
