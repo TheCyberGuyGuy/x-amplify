@@ -2,7 +2,8 @@
 
 import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { XLogo, Spinner } from "@/components/icons";
+import Image from "next/image";
+import { Spinner } from "@/components/icons";
 
 function GateForm() {
   const router = useRouter();
@@ -35,13 +36,15 @@ function GateForm() {
       onSubmit={submit}
       className="w-full max-w-sm rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-8 text-center"
     >
-      <div className="mx-auto mb-6 flex items-center justify-center gap-2.5">
-        <span className="grid h-11 w-11 place-items-center rounded-2xl bg-[var(--brand)] text-xl font-black text-[var(--brand-contrast)]">
-          e
-        </span>
-        <span className="grid h-11 w-11 place-items-center rounded-2xl bg-white text-black">
-          <XLogo className="h-5 w-5" />
-        </span>
+      <div className="mx-auto mb-6 flex items-center justify-center">
+        <Image
+          src="/logo.png"
+          alt="eToro X-Amplify"
+          width={64}
+          height={64}
+          className="h-16 w-16 rounded-2xl"
+          priority
+        />
       </div>
       <h1 className="text-xl font-bold tracking-tight">eToro X-Amplify</h1>
       <p className="mt-1.5 text-sm text-[var(--muted)]">

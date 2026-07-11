@@ -21,9 +21,14 @@ export function SiteHeader({
     <header className="sticky top-0 z-20 border-b border-[var(--border)] bg-[var(--background)]/70 backdrop-blur-xl">
       <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-3.5 sm:px-5">
         <Link href="/dashboard" className="flex min-w-0 items-center gap-2.5">
-          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[var(--brand)] font-black text-[var(--brand-contrast)]">
-            e
-          </span>
+          <Image
+            src="/logo.png"
+            alt="eToro X-Amplify"
+            width={32}
+            height={32}
+            className="h-8 w-8 shrink-0 rounded-lg"
+            priority
+          />
           <span className="truncate text-sm font-semibold tracking-tight">
             eToro <span className="text-[var(--brand)]">X-Amplify</span>
           </span>

@@ -17,6 +17,10 @@ export const metadata: Metadata = {
   description: "Connect with your eToro colleagues on X.",
   // PWA manifest — iOS only delivers web push to home-screen-installed apps.
   manifest: "/manifest.json",
+  icons: {
+    icon: "/favicon.ico",
+    apple: "/apple-touch-icon.png",
+  },
 };
 
 import { Providers } from "@/components/providers";

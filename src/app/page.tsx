@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
+import Image from "next/image";
 import { SignInButton } from "@/components/sign-in-button";
-import { XLogo } from "@/components/icons";
 
 export default async function Home() {
   const session = await auth();
@@ -10,13 +10,15 @@ export default async function Home() {
   return (
     <main className="flex flex-1 items-center justify-center px-6 py-20">
       <div className="w-full max-w-xl text-center">
-        <div className="mx-auto mb-8 flex items-center justify-center gap-3">
-          <span className="grid h-12 w-12 place-items-center rounded-2xl bg-[var(--brand)] text-2xl font-black text-[var(--brand-contrast)]">
-            e
-          </span>
-          <span className="grid h-12 w-12 place-items-center rounded-2xl bg-white text-black">
-            <XLogo className="h-6 w-6" />
-          </span>
+        <div className="mx-auto mb-8 flex items-center justify-center">
+          <Image
+            src="/logo.png"
+            alt="eToro X-Amplify"
+            width={80}
+            height={80}
+            className="h-20 w-20 rounded-2xl"
+            priority
+          />
         </div>
 
         <h1 className="text-balance text-4xl font-bold tracking-tight sm:text-5xl">
