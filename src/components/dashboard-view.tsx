@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import { signIn } from "next-auth/react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
@@ -131,9 +132,24 @@ export function DashboardView({
 
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center gap-3 py-24 text-[var(--muted)]">
-        <Spinner className="h-6 w-6" />
-        Checking who you already follow…
+      <div className="flex flex-col items-center gap-6 py-24 text-[var(--muted)]">
+        <motion.div
+          animate={{ scale: [1, 1.04, 1], opacity: [0.85, 1, 0.85] }}
+          transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+        >
+          <Image
+            src="/logo.png"
+            alt="eToro X-Amplify"
+            width={160}
+            height={160}
+            priority
+            className="h-32 w-32 rounded-3xl shadow-2xl sm:h-40 sm:w-40"
+          />
+        </motion.div>
+        <div className="flex items-center gap-3">
+          <Spinner className="h-5 w-5" />
+          Checking who you already follow…
+        </div>
       </div>
     );
   }
